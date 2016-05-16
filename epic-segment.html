@@ -1,0 +1,192 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../epic-rx/epic-rx.html">
+
+<!--
+An element providing a solution to no problem in particular.
+
+Example:
+
+    <epic-segment key="1g23e4s5ffs"></epic-segment>
+
+@demo demo/index.html
+-->
+
+<script type="text/javascript">
+  (function(){
+
+    // Create a queue, but don't obliterate an existing one!
+    var analytics = window.analytics = window.analytics || [];
+
+    // If the real analytics.js is already on the page return.
+    if (analytics.initialize) return;
+
+    // If the snippet was invoked already show an error.
+    if (analytics.invoked) {
+      if (window.console && console.error) {
+        console.error('Segment snippet included twice.');
+      }
+      return;
+    }
+
+    // Invoked flag, to make sure the snippet
+    // is never invoked twice.
+    analytics.invoked = true;
+
+    // A list of the methods in Analytics.js to stub.
+    analytics.methods = [
+      'trackSubmit',
+      'trackClick',
+      'trackLink',
+      'trackForm',
+      'pageview',
+      'identify',
+      'reset',
+      'group',
+      'track',
+      'ready',
+      'alias',
+      'page',
+      'once',
+      'off',
+      'on'
+    ];
+
+    // Define a factory to create stubs. These are placeholders
+    // for methods in Analytics.js so that you never have to wait
+    // for it to load to actually record data. The `method` is
+    // stored as the first argument, so we can replay the data.
+    analytics.factory = function(method){
+      return function(){
+        var args = Array.prototype.slice.call(arguments);
+        args.unshift(method);
+        analytics.push(args);
+        return analytics;
+      };
+    };
+
+    // For each of our methods, generate a queueing stub.
+    for (var i = 0; i < analytics.methods.length; i++) {
+      var key = analytics.methods[i];
+      analytics[key] = analytics.factory(key);
+    }
+
+    // Define a method to load Analytics.js from our CDN,
+    // and that will be sure to only ever load it once.
+    analytics.load = function(key){
+      // Create an async script element based on your key.
+      var script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.async = true;
+      script.src = ('https:' === document.location.protocol
+        ? 'https://' : 'http://')
+        + 'cdn.segment.com/analytics.js/v1/'
+        + key + '/analytics.min.js';
+
+      // Insert our script next to the first script element.
+      var first = document.getElementsByTagName('script')[0];
+      first.parentNode.insertBefore(script, first);
+    };
+
+    // Add a version to keep track of what's in the wild.
+    analytics.SNIPPET_VERSION = '3.1.0';
+  })();
+
+</script>
+
+<dom-module id="epic-segment">
+    <template>
+        <p>{{key}}</p>
+    </template>
+  <script>
+  (function() {
+    'use strict';
+
+    class EpicSegment {
+
+      // Element setup goes in beforeRegister instead of createdCallback.
+      beforeRegister() {
+        this.is = 'epic-segment';
+
+        // Define the properties object in beforeRegister.
+        this.properties = {
+            key: {
+              type: String,
+              notify: true,
+            //   value: () => '',
+              observer: '_keyChanged'
+            },
+            pageName: {
+              type: String,
+              notify: true,
+              value: () => ''
+            },
+            pageCategory: {
+              type: String,
+              notify: true,
+              value: () => ''
+            },
+            trackPageview: {
+              type: Boolean,
+              notify: true,
+              value: () => false
+            },
+            pageviewTracked: {
+                type: Boolean,
+                computed: '_computePageViewTracked(key, trackPageview, pageCategory, pageName)',
+                value: () => false,
+                notify: true,
+                observer: '_pageviewTrackedChanged'
+            }
+        }
+      }
+
+      // Define other lifecycle methods as you need.
+      ready() {
+          console.log('ready');
+      }
+      attached() {
+          console.log('attached');
+      }
+      detached() {
+          console.log('detached');
+      }
+      attributeChanged() {
+          console.log('attributeChanged');
+      }
+
+      // Property Observers
+      _keyChanged(key){
+          analytics.load(newValue);
+          console.log(key.length);
+
+      }
+
+      _computePageViewTracked(key, trackPageview, category, name){
+          if (key.length > 0 && trackPageview) {
+              analytics.page([category, name].filter(e => e))
+              return true;
+          }
+      }
+
+      _pageviewTrackedChanged(newValue){
+          if(newValue){
+            console.log(`_pageviewTrackedChanged: ${newValue}`);
+          }
+      }
+    }
+
+    // Register the element using Polymer's constructor.
+    Polymer(EpicSegment);
+  })();
+  </script>
+</dom-module>
